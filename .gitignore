@@ -1,0 +1,19 @@
+# Frontend
+kbm-frontend/node_modules/
+kbm-frontend/dist/
+kbm-frontend/.env
+kbm-frontend/.env.local
+kbm-frontend/.env.*.local
+
+# .NET
+KBM/**/bin/
+KBM/**/obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
