@@ -3,6 +3,7 @@ import { Sparkles, Send, Plus, Bot, ArrowLeft, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { ChatMessage } from '../types';
+import { CohereService } from '../services/cohere';
 
 export const ChatbotPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -25,33 +26,68 @@ export const ChatbotPage: React.FC = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const handleSend = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const userText = input.trim();
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'user',
-      text: userText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  if (!input.trim() || isTyping) return;
+
+  const userText = input.trim();
+
+  const userMsg: ChatMessage = {
+    id: Date.now().toString(),
+    sender: 'user',
+    text: userText,
+    timestamp: new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  };
+
+  const updatedMessages = [...messages, userMsg];
+
+  setMessages(updatedMessages);
+  setInput('');
+  setIsTyping(true);
+
+  try {
+    const cohereMessages = updatedMessages.map((message) => ({
+      role: message.sender,
+      content: message.text,
+    }));
+
+    const response = await CohereService.sendMessage(
+      cohereMessages
+    );
+
+    const botMsg: ChatMessage = {
+      id: `${Date.now()}-assistant`,
+      sender: 'assistant',
+      text: response,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
-    setIsTyping(true);
+    setMessages((prev) => [...prev, botMsg]);
+  } catch (error) {
+    console.error('Cohere error:', error);
 
-    setTimeout(() => {
-      const botMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'assistant',
-        text: `Based on our knowledge base, I found relevant documentation regarding "${userText}".\n\nKey takeaways:\n• System workflows follow standardized engineering practices.\n• Ensure validation matrices are applied in accordance with QA protocols.\n\nWould you like me to pull up the full lesson?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 850);
-  };
+    const errorMsg: ChatMessage = {
+      id: `${Date.now()}-error`,
+      sender: 'assistant',
+      text: 'Sorry, I could not connect to the AI service. Please try again.',
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+
+    setMessages((prev) => [...prev, errorMsg]);
+  } finally {
+    setIsTyping(false);
+  }
+};
 
   const handleNewChat = () => {
     setMessages([
@@ -102,9 +138,9 @@ export const ChatbotPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Chat Main Area */}
+        
         <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-colors dark:border-slate-800/80 dark:bg-[#0b1623] md:col-span-3">
-          {/* Top Header */}
+          
           <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-5 py-3 backdrop-blur dark:border-slate-800 dark:bg-[#07101a]">
             <div className="flex items-center gap-3">
               <Link
@@ -135,7 +171,7 @@ export const ChatbotPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Message Stream */}
+          
           <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
             {messages.map((msg) => (
               <div
@@ -181,7 +217,7 @@ export const ChatbotPage: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Bottom Fixed Input */}
+          
           <div className="border-t border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-[#07101a]">
             <form onSubmit={handleSend} className="relative flex items-center">
               <input
@@ -193,7 +229,7 @@ export const ChatbotPage: React.FC = () => {
               />
               <button
                 type="submit"
-                disabled={!input.trim()}
+                disabled={!input.trim() || isTyping}
                 aria-label="Send message"
                 className="absolute right-1.5 rounded-lg bg-sky-600 p-2 text-white shadow-sm transition hover:bg-sky-500 disabled:opacity-40 disabled:hover:bg-sky-600"
               >
