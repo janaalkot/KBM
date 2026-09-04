@@ -2,9 +2,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def split_documents(documents):
-    """
-    Split documents into smaller chunks for embedding/search.
-    """
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
@@ -21,30 +18,11 @@ def split_documents(documents):
     return splitter.split_documents(documents)
 
 
-def add_chunk_metadata(
-    chunks,
-    lesson_id=None,
-    filename=None,
-):
-    """
-    Add metadata required by ChromaDB.
+def add_chunk_metadata(chunks,lesson_id=None,filename=None,):
 
-    For lessons:
-        lesson_id
-        source_type
-        chunk_id
-
-    For PDFs:
-        filename
-        source_type
-        chunk_id
-        page
-    """
 
     if lesson_id is None and filename is None:
-        raise ValueError(
-            "Either lesson_id or filename must be provided."
-        )
+        raise ValueError( "Either lesson_id or filename must be provided." )
 
     for index, chunk in enumerate(chunks):
 
@@ -61,9 +39,7 @@ def add_chunk_metadata(
 
             metadata["source_type"] = "lesson"
 
-            metadata["chunk_id"] = (
-                f"lesson-{lesson_id}-{index}"
-            )
+            metadata["chunk_id"] = ( f"lesson-{lesson_id}-{index}")
 
         else:
 
@@ -71,9 +47,7 @@ def add_chunk_metadata(
 
             metadata["source_type"] = "pdf"
 
-            metadata["chunk_id"] = (
-                f"pdf-{filename}-{index}"
-            )
+            metadata["chunk_id"] = (  f"pdf-{filename}-{index}" )
 
         if page is not None:
             metadata["page"] = page
