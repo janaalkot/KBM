@@ -9,28 +9,76 @@ import type {
   UpdateLessonDto,
 } from '../types';
 
+
+/*
+|--------------------------------------------------------------------------
+| KBM API
+|--------------------------------------------------------------------------
+*/
+
 const API = axios.create({
   baseURL:
     import.meta.env.VITE_API_URL ||
     'https://localhost:7168/api/v1.0',
+
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('kbm_token');
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+/*
+|--------------------------------------------------------------------------
+| RAG API
+|--------------------------------------------------------------------------
+*/
 
-  return config;
+const RAG_API = axios.create({
+  baseURL:
+    import.meta.env.VITE_RAG_API_URL ||
+    'http://127.0.0.1:8000',
+
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-const getErrorMessage = (error: unknown): string => {
+
+/*
+|--------------------------------------------------------------------------
+| JWT
+|--------------------------------------------------------------------------
+*/
+
+API.interceptors.request.use(
+  (config) => {
+    const token =
+      localStorage.getItem('kbm_token');
+
+    if (token) {
+      config.headers.Authorization =
+        `Bearer ${token}`;
+    }
+
+    return config;
+  }
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Error Helper
+|--------------------------------------------------------------------------
+*/
+
+const getErrorMessage = (
+  error: unknown
+): string => {
+
   if (axios.isAxiosError(error)) {
-    const data = error.response?.data;
+
+    const data =
+      error.response?.data;
 
     if (typeof data === 'string') {
       return data;
@@ -44,86 +92,402 @@ const getErrorMessage = (error: unknown): string => {
       return data.title;
     }
 
-    if (error.response?.status === 401) {
-      return 'You are not authorized. Please log in.';
+    if (data?.detail) {
+      return data.detail;
     }
 
-    if (error.response?.status === 400) {
-      return 'The submitted data is invalid.';
+    if (
+      error.response?.status === 401
+    ) {
+      return (
+        'You are not authorized. Please log in.'
+      );
+    }
+
+    if (
+      error.response?.status === 400
+    ) {
+      return (
+        'The submitted data is invalid.'
+      );
     }
   }
 
-  return 'Something went wrong. Please try again.';
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return (
+    'Something went wrong. Please try again.'
+  );
 };
+
+
+/*
+|--------------------------------------------------------------------------
+| Lesson Service
+|--------------------------------------------------------------------------
+*/
 
 export const LessonService = {
-  getLessons: async (): Promise<Lesson[]> => {
-    const response = await API.get<Lesson[]>('/Lesson');
-    return response.data;
-  },
 
-  getLessonById: async (id: string): Promise<Lesson> => {
-    const response = await API.get<Lesson>(`/Lesson/${id}`);
-    return response.data;
-  },
+  getLessons:
+    async (): Promise<Lesson[]> => {
 
-  createLesson: async (
-    data: CreateLessonDto
-  ): Promise<Lesson> => {
-    const response = await API.post<Lesson>('/Lesson', data);
-    return response.data;
-  },
+      const response =
+        await API.get<Lesson[]>(
+          '/Lesson'
+        );
 
-  updateLesson: async (
-    id: string,
-    data: UpdateLessonDto
-  ): Promise<void> => {
-    await API.put(`/Lesson/${id}`, data);
-  },
+      return response.data;
+    },
 
-  deleteLesson: async (id: string): Promise<void> => {
-    await API.delete(`/Lesson/${id}`);
-  },
 
-  getDepartments: async (): Promise<Department[]> => {
-    const response = await API.get<Department[]>(
-      '/Lookup/departments'
-    );
+  getLessonById:
+    async (
+      id: string
+    ): Promise<Lesson> => {
 
-    return response.data;
-  },
+      const response =
+        await API.get<Lesson>(
+          `/Lesson/${id}`
+        );
 
-  getFunctions: async (): Promise<Function[]> => {
-    const response = await API.get<Function[]>(
-      '/Lookup/functions'
-    );
+      return response.data;
+    },
 
-    return response.data;
-  },
 
-  getIndustries: async (): Promise<Industry[]> => {
-    const response = await API.get<Industry[]>(
-      '/Lookup/industries'
-    );
+  createLesson:
+    async (
+      data: CreateLessonDto
+    ): Promise<Lesson> => {
 
-    return response.data;
-  },
+      const response =
+        await API.post<Lesson>(
+          '/Lesson',
+          data
+        );
+
+      return response.data;
+    },
+
+
+  updateLesson:
+    async (
+      id: string,
+      data: UpdateLessonDto
+    ): Promise<void> => {
+
+      await API.put(
+        `/Lesson/${id}`,
+        data
+      );
+    },
+
+
+  deleteLesson:
+    async (
+      id: string
+    ): Promise<void> => {
+
+      await API.delete(
+        `/Lesson/${id}`
+      );
+    },
+
+
+  getDepartments:
+    async (): Promise<Department[]> => {
+
+      const response =
+        await API.get<Department[]>(
+          '/Lookup/departments'
+        );
+
+      return response.data;
+    },
+
+
+  getFunctions:
+    async (): Promise<Function[]> => {
+
+      const response =
+        await API.get<Function[]>(
+          '/Lookup/functions'
+        );
+
+      return response.data;
+    },
+
+
+  getIndustries:
+    async (): Promise<Industry[]> => {
+
+      const response =
+        await API.get<Industry[]>(
+          '/Lookup/industries'
+        );
+
+      return response.data;
+    },
 };
+
+
+/*
+|--------------------------------------------------------------------------
+| RAG Types
+|--------------------------------------------------------------------------
+*/
+
+export interface RagSearchResult {
+
+  content: string;
+
+  metadata: {
+    lesson_id?: string;
+
+    filename?: string;
+
+    page?: number;
+
+    chunk_id?: string;
+
+    source_type?: 'lesson' | 'pdf';
+
+    title?: string;
+
+    [key: string]: unknown;
+  };
+}
+
+
+export interface RagSearchResponse {
+
+  query: string;
+
+  count: number;
+
+  results: RagSearchResult[];
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| RAG Service
+|--------------------------------------------------------------------------
+*/
+
+export const RagService = {
+
+  /*
+  |--------------------------------------------------------------------------
+  | Search
+  |--------------------------------------------------------------------------
+  */
+
+  search:
+    async (
+      query: string,
+      k = 5
+    ): Promise<RagSearchResponse> => {
+
+      const response =
+        await RAG_API.get<RagSearchResponse>(
+          '/search',
+          {
+            params: {
+              query,
+              k,
+            },
+          }
+        );
+
+      return response.data;
+    },
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | Search Inside Lesson
+  |--------------------------------------------------------------------------
+  */
+
+  searchLesson:
+    async (
+      lessonId: string,
+      query: string,
+      k = 5
+    ): Promise<RagSearchResponse> => {
+
+      const response =
+        await RAG_API.get<RagSearchResponse>(
+          `/search-lesson/${encodeURIComponent(
+            lessonId
+          )}`,
+          {
+            params: {
+              query,
+              k,
+            },
+          }
+        );
+
+      return response.data;
+    },
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | Index Lesson
+  |--------------------------------------------------------------------------
+  */
+
+  indexLesson:
+    async (
+      lesson: Lesson,
+      status:
+        | 'new'
+        | 'update'
+        | 'delete'
+    ): Promise<void> => {
+
+      await RAG_API.post(
+        '/process-lesson',
+        {
+          id: lesson.id,
+
+          title: lesson.title,
+
+          projectName:
+            lesson.projectName,
+
+          departmentId:
+            lesson.departmentId,
+
+          functionId:
+            lesson.functionId,
+
+          industryId:
+            lesson.industryId,
+
+          valueProposition:
+            lesson.valueProposition,
+
+          description:
+            lesson.description,
+
+          imageUrl:
+            lesson.imageUrl ?? null,
+
+          personToContact:
+            lesson.personToContact ?? null,
+
+          createdDate:
+            lesson.createdDate ?? null,
+
+          modifiedDate:
+            lesson.modifiedDate ?? null,
+
+          status,
+        }
+      );
+    },
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | Upload PDF
+  |--------------------------------------------------------------------------
+  */
+
+  uploadPdf:
+    async (
+      file: File
+    ) => {
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        'file',
+        file
+      );
+
+      const response =
+        await RAG_API.post(
+          '/upload-file',
+          formData,
+          {
+            headers: {
+              'Content-Type':
+                'multipart/form-data',
+            },
+          }
+        );
+
+      return response.data;
+    },
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | Process PDF
+  |--------------------------------------------------------------------------
+  */
+
+  processPdf:
+    async (
+      filename: string
+    ) => {
+
+      const response =
+        await RAG_API.post(
+          `/process-file/${encodeURIComponent(
+            filename
+          )}`
+        );
+
+      return response.data;
+    },
+};
+
+
+/*
+|--------------------------------------------------------------------------
+| Authentication
+|--------------------------------------------------------------------------
+*/
 
 export const AuthService = {
-  login: async (
-    email: string,
-    password: string
-  ) => {
-    const response = await API.post('/../Auth/login', {
-      email,
-      password,
-    });
 
-    return response.data;
-  },
+  login:
+    async (
+      email: string,
+      password: string
+    ) => {
+
+      const response =
+        await API.post(
+          '/../Auth/login',
+          {
+            email,
+            password,
+          }
+        );
+
+      return response.data;
+    },
 };
 
-export { getErrorMessage };
+
+/*
+|--------------------------------------------------------------------------
+| Exports
+|--------------------------------------------------------------------------
+*/
+
+export {
+  getErrorMessage,
+};
 
 export default API;
